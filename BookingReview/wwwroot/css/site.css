@@ -1,0 +1,103 @@
+html {
+    font-size: 14px;
+    font-family: 'Roboto', sans-serif;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('fonts/Roboto-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('fonts/Roboto-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    margin-bottom: 60px;
+}
+
+.first-gns-nav {
+    height: 100px !important;
+    background: #0F9197;
+}
+
+.first-gns-nav > div > p {
+    color: #FFF;
+    font-size: 30px !important;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+}
+
+.second-gns-nav {
+    height: 60px !important;
+    background: #E5E5E5;
+}
+
+.second-gns-nav > div > p {
+    color: #000;
+    font-size: 20px !important;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+}
+
+.text-talon {
+    color: #0F9197;
+    font-size: 30px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: normal;
+}
+
+.number-talon {
+    color: #000;
+    font-size: 40px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    border: 1px solid #0C949A;
+    height: 78px;
+    width: 433px;
+}
+
+.custom-input-gns {
+    border-radius: unset !important;
+}
+
+.custom-input-gns:focus {
+    box-shadow: none !important;
+}
+
+.review-wrapper {
+    background: #E5F3F4;
+    height: 540px;
+}
+
+.card-review {
+    cursor: pointer;
+    height: 99px;
+    background: #0C949A;
+}
+
+.card-review > p {
+    color: #FFF;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: normal;
+}
