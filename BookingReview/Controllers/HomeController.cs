@@ -1,16 +1,29 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using BookingReview.Models;
+using BookingReview.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BookingReview.Controllers;
 
 public class HomeController : Controller
 {
-    public HomeController()
+    private readonly IReviewService _reviewService;
+
+    public HomeController(IReviewService reviewService)
     {
+        _reviewService = reviewService;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        var reviews = await _reviewService.GetReviewModelsAsync();
+        return View(reviews);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<bool> AddReviewAsync(ReviewModel model, string talon)
+    {
+        return await _reviewService.AddReviewAsync(model, talon);
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

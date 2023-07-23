@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>@ViewData["Title"]</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="~/lib/css/sweetalert2.min.css"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
     <link rel="stylesheet" href="~/BookingReview.styles.css" asp-append-version="true"/>
 </head>
@@ -15,7 +16,7 @@
             <p class="w-100">Помогите нам улучшить качество обслуживания</p>
         </div>
     </nav>
-    
+
     <nav class="navbar second-gns-nav">
         <div class="container text-center">
             <p class="w-100">Каждый Ваш отзыв важен для нас!</p>
@@ -24,6 +25,8 @@
 </header>
 
 <div class="container mt-5 mb-5">
+    <div id="loader"></div>
+    <div id="overlay"></div>
     <main role="main" class="pb-3">
         @RenderBody()
     </main>
@@ -31,6 +34,7 @@
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/sweetalert2.all.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
