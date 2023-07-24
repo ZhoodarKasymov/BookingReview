@@ -163,8 +163,7 @@
                    beforeSend: function(xhr) {
                      xhr.setRequestHeader("RequestVerificationToken", token);
                    },
-                   success: function(response) {                            
-                       debugger;
+                   success: function(response) {
                        if (response){
                            $('#full-wrapper div').remove();
                            $('#full-wrapper').append($(`<h3 class="row text-center w-100">

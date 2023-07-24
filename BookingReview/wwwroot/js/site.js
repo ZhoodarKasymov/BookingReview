@@ -25,13 +25,13 @@ function dangerAlert(message) {
     });
 }
 
-$(document).ready(function() {
-    $('.validate-input').on('input', function() {
+$(document).ready(function () {
+    $('.validate-input').on('input', function () {
         validateInput($(this));
     });
 
-    $('#validateButton').click(function() {
-        $('.validate-input').each(function() {
+    $('#validateButton').click(function () {
+        $('.validate-input').each(function () {
             validateInput($(this));
         });
     });
@@ -40,18 +40,17 @@ $(document).ready(function() {
 function validateInput(input) {
     let value = input.val();
     let pattern = /^[A-Za-z]+\d+$/;
-    
-    if(!pattern.test(value)){
-        input.removeClass('error');
-        $('.error-message').remove();
-        input.addClass('error');
-        input.after('<div class="error-message">Не правильное значение талона!</div>');
-    }
-    else if (value === '') {
+
+    if (value === '') {
         input.removeClass('error');
         $('.error-message').remove();
         input.addClass('error');
         input.after('<div class="error-message">Это поле не может быть пустым.</div>');
+    } else if (!pattern.test(value)) {
+        input.removeClass('error');
+        $('.error-message').remove();
+        input.addClass('error');
+        input.after('<div class="error-message">Не правильное значение талона!</div>');
     } else {
         input.removeClass('error');
         $('.error-message').remove();
