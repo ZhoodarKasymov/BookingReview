@@ -100,20 +100,6 @@
         var dataId;
         var isBadReview;
         
-        /* Code to get jQuery UI to work with jQuery 3.4+ ... */
-        $.isArray = function(a) {
-          return Object.prototype.toString.call(a) === '[object Array]';
-        }
-        $.isFunction = function(f) {
-          return typeof f === 'function';
-        }
-        $.isWindow = function(w) {
-          var toString = Object.prototype.toString.call(w);
-          return toString == '[object global]' ||
-            toString == '[object Window]' ||
-            toString == '[object DOMWindow]';
-        }
-        
         $('.card-review').click(function() {
               $('.card-review').removeClass('active-review');
               $(this).addClass('active-review');
