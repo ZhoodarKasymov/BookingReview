@@ -66,3 +66,11 @@ function hideLoader() {
     $('#loader').hide();
     $('#overlay').hide();
 }
+
+$('.talon-keyboard').mlKeyboard({
+    layout: 'en_US'
+});
+
+$('.keyboard').mlKeyboard({
+    layout: 'ru_RU'
+});

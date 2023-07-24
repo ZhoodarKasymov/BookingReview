@@ -19,10 +19,18 @@ public class ReviewService : IReviewService
     {
         CorrectTalon(talon, out var talonKey, out var talonNumber);
 
-        var query = @"SELECT id, service_id, user_id FROM clients
-                        WHERE service_prefix = upper(@TalonKey) && number = @TalonNumber;";
+        var dateNow = DateTime.Now;
 
-        var client = await _db.QueryFirstOrDefaultAsync(query, new { TalonKey = talonKey, TalonNumber = talonNumber });
+        var query = @"SELECT id, service_id, user_id FROM clients
+                        WHERE service_prefix = upper(@TalonKey) && number = @TalonNumber && DATE(start_time) = @Date;";
+
+        var client = await _db.QueryFirstOrDefaultAsync(query, 
+            new
+            {
+                TalonKey = talonKey, 
+                TalonNumber = talonNumber,
+                Date = dateNow.Date
+            });
 
         if (client is null) throw new Exception("Талон не найден!");
 
@@ -37,7 +45,7 @@ public class ReviewService : IReviewService
                                                     VALUES (@RespDate, @ResponseId, @ServiceId, @UserId, @ClientId, '', @Comment);",
             new
             {
-                RespDate = DateTime.Now,
+                RespDate = dateNow,
                 ResponseId = model.Id,
                 ServiceId = serviceId,
                 UserId = userId,

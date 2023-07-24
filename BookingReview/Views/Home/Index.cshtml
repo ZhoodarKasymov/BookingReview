@@ -15,7 +15,7 @@
         </div>
     
         <div class="col-sm-4 mx-auto p-0">
-            <input id="talon" type="text" style="text-transform: uppercase" class="form-control number-talon text-center custom-input-gns validate-input"/>
+            <input autocomplete="off" id="talon" type="text" style="text-transform: uppercase" class="form-control number-talon text-center custom-input-gns validate-input talon-keyboard"/>
         </div>
     </div>
     
@@ -80,7 +80,7 @@
                 <div class="col-12">
                     <textarea maxlength="256"
                             placeholder="Комментарии не обязательны"
-                            class="form-control custom-input-gns custom-text-area"></textarea>
+                            class="form-control custom-input-gns custom-text-area keyboard"></textarea>
                 </div>
             </div>
         </div>
@@ -99,6 +99,20 @@
     <script type="text/javascript">
         var dataId;
         var isBadReview;
+        
+        /* Code to get jQuery UI to work with jQuery 3.4+ ... */
+        $.isArray = function(a) {
+          return Object.prototype.toString.call(a) === '[object Array]';
+        }
+        $.isFunction = function(f) {
+          return typeof f === 'function';
+        }
+        $.isWindow = function(w) {
+          var toString = Object.prototype.toString.call(w);
+          return toString == '[object global]' ||
+            toString == '[object Window]' ||
+            toString == '[object DOMWindow]';
+        }
         
         $('.card-review').click(function() {
               $('.card-review').removeClass('active-review');
