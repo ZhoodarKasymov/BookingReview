@@ -175,8 +175,8 @@ body {
 }
 
 .custom-check-box {
-    min-width: 20px !important;
-    min-height: 20px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
 }
 
 #loader {
@@ -242,20 +242,3 @@ h1 > p {
     font-weight: 400;
     line-height: normal;
 }
-
-/*#mlkeyboard {*/
-/*    !*height: 245px !important;*!*/
-/*}*/
-
-/*#mlkeyboard ul {*/
-/*    width: 1140px !important;*/
-/*    height: 415px !important;*/
-/*    border-radius: unset !important;*/
-/*    font-size: 15px;*/
-/*}*/
-
-/*#mlkeyboard ul li {*/
-/*    height: 75px !important;*/
-/*    width: 75px !important;*/
-/*    border-radius: unset !important;*/
-/*}*/

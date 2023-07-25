@@ -15,7 +15,7 @@
         </div>
     
         <div class="col-sm-4 mx-auto p-0">
-            <input autocomplete="off" id="talon" type="text" style="text-transform: uppercase" class="form-control number-talon text-center custom-input-gns validate-input talon-keyboard"/>
+            <input data-kioskboard-specialcharacters="true" autocomplete="off" id="talon" type="text" style="text-transform: uppercase" class="form-control number-talon text-center custom-input-gns validate-input talon-keyboard"/>
         </div>
     </div>
     
@@ -79,6 +79,7 @@
             <div class="col-6 mx-auto">
                 <div class="col-12">
                     <textarea maxlength="256"
+                            data-kioskboard-specialcharacters="true"
                             placeholder="Комментарии не обязательны"
                             class="form-control custom-input-gns custom-text-area keyboard"></textarea>
                 </div>
@@ -156,6 +157,7 @@
                 
                 showLoader();
                 let token = $("input[name='__RequestVerificationToken']").val();
+                
                 $.ajax({
                    url: '@Url.Action("AddReview", "Home")',
                    type: 'POST',
