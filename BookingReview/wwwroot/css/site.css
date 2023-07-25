@@ -177,6 +177,8 @@ body {
 .custom-check-box {
     min-width: 40px !important;
     min-height: 40px !important;
+    width: 40px !important;
+    height: 40px !important;
 }
 
 #loader {
@@ -241,4 +243,8 @@ h1 > p {
     font-style: normal;
     font-weight: 400;
     line-height: normal;
+}
+
+#alert {
+    display: none;
 }
