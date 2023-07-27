@@ -110,29 +110,33 @@
               if (isBadReview === "True") {
                   $('#card-wrapper div').remove();
                   $('#card-wrapper').append($(`<div class="col-6 mb-4">
-                                                   <div class="card-bad-review p-4 text-center">
-                                                       <input class="custom-check-box" type="checkbox" id="myCheckbox" name="myCheckbox" value="Грубое отношение">
-                                                       <label for="myCheckbox" class="check-box-label">Грубое отношение</label>
+                                                   <div class="card-bad-review p-4 text-center" data-value="Грубое отношение">
+                                                       <p>Грубое отношение</p>
                                                    </div>
                                                </div>
                                                <div class="col-6 mb-4">
-                                                   <div class="card-bad-review p-4 text-center">
-                                                       <input class="custom-check-box" type="checkbox" id="myCheckbox2" name="myCheckbox" value="Отвлекается на телефонные звонки, коллег">
-                                                       <label for="myCheckbox2" class="check-box-label">Отвлекается на телефонные звонки, коллег</label>
+                                                   <div class="card-bad-review p-4 text-center" data-value="Отвлекается на телефонные звонки, коллег">
+                                                       <p>Отвлекается на телефонные звонки, коллег</p>
                                                    </div>
                                                </div>
                                                <div class="col-6 mb-4">
-                                                   <div class="card-bad-review p-4 text-center">
-                                                       <input class="custom-check-box" type="checkbox" id="myCheckbox3" name="myCheckbox" value="Некомпетентный сотрудник">
-                                                       <label for="myCheckbox3" class="check-box-label">Некомпетентный сотрудник</label>
+                                                   <div class="card-bad-review p-4 text-center" data-value="Некомпетентный сотрудник">
+                                                       <p>Некомпетентный сотрудник</p>
                                                    </div>
                                                </div>
                                                <div class="col-6 mb-4">
-                                                   <div class="card-bad-review p-4 text-center">
-                                                       <input class="custom-check-box" type="checkbox" id="myCheckbox4" name="myCheckbox" value="Долго обслуживает">
-                                                       <label for="myCheckbox4" class="check-box-label">Долго обслуживает</label>
+                                                   <div class="card-bad-review p-4 text-center" data-value="Долго обслуживает">
+                                                       <p>Долго обслуживает</p>
                                                    </div>
                                                </div>`));
+                  
+                  $('.card-bad-review').click(function() {
+                      if ($(this).hasClass('card-bad-review-active')) {
+                        $(this).removeClass('card-bad-review-active');
+                      } else {
+                        $(this).addClass('card-bad-review-active');
+                      }
+                  });
               }
         });
         
@@ -150,8 +154,8 @@
                 let comments = comment !== "" ? [comment] : [];
                 
                 if (isBadReview === "True"){
-                    $('input[type="checkbox"]:checked').each(function() {
-                        comments.push($(this).val());
+                    $('.card-bad-review-active').each(function() {
+                        comments.push($(this).attr('data-value'));
                     });
                 }
                 

@@ -151,17 +151,28 @@ body {
 }
 
 .card-bad-review {
-    display: flex;
-    align-items: center;
+    cursor: pointer;
     height: 99px;
-    gap: 16px;
-    color: #000;
-    font-style: normal;
-    font-weight: 400;
-    line-height: normal;
-    border: 1px solid #FFF;
-    background: #FFF;
+    background: #0C949A;
 }
+
+.card-bad-review > p {
+    color: #FFF;
+    font-size: 20px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: normal;
+    align-items: center;
+}
+
+.card-bad-review-active {
+    background: #FFF !important;
+}
+
+.card-bad-review-active > p {
+    color: #000 !important;
+}
+
 
 .check-box-label {
     display: flex;
@@ -198,13 +209,21 @@ body {
 }
 
 @-webkit-keyframes spin {
-    0% { -webkit-transform: rotate(0deg); }
-    100% { -webkit-transform: rotate(360deg); }
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Add animation to "page content" */
@@ -217,13 +236,25 @@ body {
 }
 
 @-webkit-keyframes animatebottom {
-    from { bottom:-100px; opacity:0 }
-    to { bottom:0px; opacity:1 }
+    from {
+        bottom: -100px;
+        opacity: 0
+    }
+    to {
+        bottom: 0px;
+        opacity: 1
+    }
 }
 
 @keyframes animatebottom {
-    from{ bottom:-100px; opacity:0 }
-    to{ bottom:0; opacity:1 }
+    from {
+        bottom: -100px;
+        opacity: 0
+    }
+    to {
+        bottom: 0;
+        opacity: 1
+    }
 }
 
 #overlay {
@@ -247,4 +278,17 @@ h1 > p {
 
 #alert {
     display: none;
+}
+
+.close-button {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    padding: 5px !important;
+    background-color: #ccc !important;
+    border: none !important;
+    cursor: pointer !important;
+    border-radius: 25px !important;
+    width: 45px !important;
+    height: 45px !important;
 }
