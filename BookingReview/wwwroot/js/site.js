@@ -27,7 +27,7 @@ $(document).ready(function () {
 
 function validateInput(input) {
     let value = input.val();
-    let pattern = /^[A-Za-z]+\d+$/;
+    let pattern = /^(?:[A-Za-z]?\d+|\d+)$/;
 
     if (value === '') {
         input.removeClass('error');
