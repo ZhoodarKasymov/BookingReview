@@ -20,9 +20,14 @@ public class ReviewService : IReviewService
         CorrectTalon(talon, out var talonKey, out var talonNumber);
 
         var dateNow = DateTime.Now;
-
-        var query = @"SELECT id, service_id, user_id FROM clients
-                        WHERE service_prefix = upper(@TalonKey) && number = @TalonNumber && DATE(start_time) = @Date;";
+        string query;
+        
+        if(string.IsNullOrEmpty(talonKey))
+            query = @"SELECT id, service_id, user_id FROM clients
+                            WHERE number = @TalonNumber && DATE(start_time) = @Date;";
+        else
+            query = @"SELECT id, service_id, user_id FROM clients
+                            WHERE service_prefix = upper(@TalonKey) && number = @TalonNumber && DATE(start_time) = @Date;";
 
         var client = await _db.QueryFirstOrDefaultAsync(query, 
             new
@@ -50,7 +55,7 @@ public class ReviewService : IReviewService
                 ServiceId = serviceId,
                 UserId = userId,
                 ClientId = clientId,
-                Comment = string.Join("; ", model.Comments)
+                Comment = model.Comments != null ? string.Join("; ", model.Comments) : string.Empty
             });
 
         if (result <= 0)
@@ -84,6 +89,8 @@ public class ReviewService : IReviewService
     {
         talonKey = "";
         talonNumber = 0;
+        
+        if(int.TryParse(talon, out talonNumber)) return;
 
         var substrings = Regex.Split(talon, @"(?<=\D)(?=\d)");
 
