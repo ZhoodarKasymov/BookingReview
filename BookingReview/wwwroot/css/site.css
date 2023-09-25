@@ -86,7 +86,7 @@ body {
 
 .review-wrapper {
     background: #E5F3F4;
-    height: 540px;
+    padding-bottom: 20px !important;
 }
 
 .card-review {

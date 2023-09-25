@@ -1,5 +1,5 @@
 ﻿using BookingReview.Models;
-using BookingReview.Services;
+using BookingReview.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookingReview.Controllers;

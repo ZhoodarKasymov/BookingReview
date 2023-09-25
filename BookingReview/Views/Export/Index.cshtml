@@ -1,0 +1,289 @@
+﻿@page
+@model BookingReview.Views.Export.Index
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Отчеты системы управления очередью</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="~/lib/css/sweetalert2.min.css"/>
+    <link rel="stylesheet" href="~/lib/css/kioskboard-2.3.0.min.css"/>
+    <link rel="stylesheet" href="~/lib/css/jquery.dataTables.min.css"/>
+    <link rel="stylesheet" href="~/lib/css/dataTables.bootstrap5.min.css"/>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+</head>
+<body>
+<header>
+    <nav class="navbar first-gns-nav">
+        <div class="container text-center">
+            <p class="w-100">Отчеты системы управления очередью</p>
+        </div>
+    </nav>
+
+    <nav class="navbar second-gns-nav">
+        <div class="container text-center">
+            <p class="w-100"></p>
+        </div>
+    </nav>
+</header>
+
+<div class="container mt-5 mb-5">
+    <div id="loader"></div>
+    <div id="overlay"></div>
+    <div id="alert" class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+    </div>
+    <main role="main" class="pb-3">
+        <h4 class="col-12 text-center">
+            Фильтры для генерации отчетов
+        </h4>
+
+        <div class="mb-5 d-flex justify-content-center">
+            <div class="row" style="width: 600px;">
+                <div class="col-12 col-md-6">
+                    <b style="font-size: 18px">от:</b><input id="from" class="form-control custom-input-gns" type="date"/>
+                </div>
+                <div class="col-12 col-md-6">
+                    <b style="font-size: 18px;">до:</b><input id="to" class="form-control custom-input-gns" type="date"/>
+                </div>
+                <div class="col-12 col-md-6" id="serviceWrapper">
+                    <b style="font-size: 18px">Услуги:</b>
+                    @Html.DropDownList(
+                        "Services",
+                        new SelectList(ViewBag.Services, "Value", "Text"),
+                        "Все",
+                        new { @class = "form-control custom-input-gns", id = "service" })
+                </div>
+                <div class="col-12 col-md-6" id="workerWrapper">
+                    <b style="font-size: 18px;">Работники:</b>
+                    @Html.DropDownList(
+                        "Services",
+                        new SelectList(ViewBag.Workers, "Value", "Text"),
+                        "Все",
+                        new { @class = "form-control custom-input-gns", id = "worker" })
+                </div>
+                <div class="col-12 mt-3">
+                    <div class="form-check form-switch">
+                        <input style="box-shadow: none" class="form-check-input" type="checkbox" id="isCommonReportService" value="true">
+                        <label class="form-check-label" for="isCommonReportService">Общий отчет по услугам</label>
+                    </div>
+                </div>
+                <div class="col-12 mt-3">
+                    <div class="form-check form-switch">
+                        <input style="box-shadow: none" class="form-check-input" type="checkbox" id="isCommonReportUser" value="true">
+                        <label class="form-check-label" for="isCommonReportUser">Общий отчет по работникам</label>
+                    </div>
+                </div>
+                <div>
+                    <button style="box-shadow: none; background-color: #0F9197; border-radius: 0; border-color: unset;" id="generate" class="btn btn-primary mt-4">Сгенерировать отчет</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-3" style="font-size: 15px; display: none;" id="exporter">
+            <div class="col-12">
+                Экспортировать в:
+                <a href="#" id="pdf-export-button" data-type="pdf">PDF</a>
+                <a href="#" id="excel-export-button" data-type="excel">Excel</a>
+            </div>
+        </div>
+
+        <div id="table-container">
+            <!-- The table will be generated here -->
+        </div>
+    </main>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/sweetalert2.all.min.js"></script>
+<script src="~/lib/jquery.dataTables.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+    var isCommonReportService;
+    var isCommonReportUser;
+
+    $(document).ready(function() {  
+        $("#isCommonReportService").on("click", function(){             
+             if ($("#isCommonReportService").is(":checked")){
+                 $("#workerWrapper").hide();
+                 $("#serviceWrapper").show();
+                 $("#isCommonReportUser").prop("checked", false);
+                 isCommonReportService = true;
+                 isCommonReportUser = false;
+                 $("#worker").val(undefined);
+             }else{
+                 $("#workerWrapper").show();
+                 $("#serviceWrapper").show();
+                 isCommonReportService = false;
+                 isCommonReportUser = false;
+                 $("#service").val(undefined);
+                 $("#worker").val(undefined);
+             }
+         });
+         
+         $("#isCommonReportUser").on("click", function(){            
+            if ($("#isCommonReportUser").is(":checked")){
+                $("#workerWrapper").show();
+                $("#serviceWrapper").hide();
+                $("#isCommonReportService").prop("checked", false);
+                isCommonReportService = false;
+                isCommonReportUser = true;
+                $("#service").val(undefined);
+            }else{
+                $("#workerWrapper").show();
+                $("#serviceWrapper").show();
+                isCommonReportService = false;
+                isCommonReportUser = false;
+                $("#service").val(undefined);
+                $("#worker").val(undefined);
+            }
+        });        
+        
+        $("#generate").on("click", function (){
+           let fromDate = $("#from").val();
+           let toDate = $("#to").val();
+           
+           if (fromDate || toDate){
+               let serviceId = $("#service").val();
+               let userId = $("#worker").val();
+               
+               let data = {
+                   from: fromDate,
+                   to: toDate,
+                   serviceId: serviceId,
+                   userId: userId
+                 };
+               
+               if (isCommonReportService || isCommonReportUser){             
+                   data.isCommon = true;
+                   data.isService = isCommonReportService ?? false;
+               }
+               
+               showLoader();
+               $.ajax({
+                  url: '@Url.Action("GetPreviewTable", "Export")',
+                  type: 'GET',
+                  data: data,
+                  success: function(response) {
+                      if (response){
+                          generateTable(response);
+                      }
+                  },
+                  error: function(xhr) {
+                      dangerAlert(xhr.responseText);
+                  },
+                  complete: function() {
+                      hideLoader();
+                  }
+             });        
+           }else{
+            dangerAlert("Пожалуйста выберите дату от либо до!")   
+           }           
+        });
+    });
+    
+    $("#pdf-export-button").click(function () {
+        exportData("pdf"); // Call the exportData function with type "pdf"
+    });
+    
+    $("#excel-export-button").click(function () {
+        exportData("excel"); // Call the exportData function with type "excel"
+    });
+    
+    function exportData(type) {
+        let fromDate = $("#from").val();
+        let toDate = $("#to").val();
+    
+        if (fromDate || toDate) {
+            let serviceId = $("#service").val();
+            let userId = $("#worker").val();
+    
+            let data = {
+                from: fromDate,
+                to: toDate,
+                serviceId: serviceId,
+                userId: userId,
+                type: type == "pdf" ? 2 : 1,
+            };
+    
+            if (isCommonReportService || isCommonReportUser) {
+                data.isCommon = true;
+                data.isService = isCommonReportService ?? false;
+            }
+            
+            // Create the URL with query parameters
+            let url = `@Url.Action("Generate", "Export")?`;
+            for (let key in data) {
+                if (data.hasOwnProperty(key)) {
+                    url += `${key}=${encodeURIComponent(data[key])}&`;
+                }
+            }
+    
+            // Open a new tab or window with the URL
+            window.open(url, '_blank');
+        } else {
+            dangerAlert("Пожалуйста выберите дату от либо до!");
+        }
+    }
+
+    function generateTable(data) {
+        let table = $("<table>").addClass("table table-striped table-bordered"); // Create a table element
+        let thead = $("<thead>").appendTo(table); // Table header
+        let tbody = $("<tbody>").appendTo(table); // Table body
+    
+        // Create table header row
+        let headerRow = $("<tr>").appendTo(thead);
+        $.each(data.headers, function(index, header) {
+            $("<th>").attr("scope", "col").text(header).appendTo(headerRow); // Add table headers
+        });
+        
+        // Create table data rows
+        $.each(data.results, function(index, row) {
+            let dataRow = $("<tr>").appendTo(tbody);
+            $.each(row, function(index, cellData) {
+                let $cell = $("<td>").appendTo(dataRow); // Add table cells
+        
+                // Check if the cellData looks like a date
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(cellData)) {
+                    // If it's a date, parse it and convert to local time
+                    let date = new Date(cellData);
+                    let localTime = date.toLocaleString(); // Convert to local time format
+        
+                    // Set the cell content to the local time
+                    $cell.text(localTime);
+                } else {
+                    // If it's not a date, simply display the original cellData
+                    $cell.text(cellData);
+                }
+            });
+        });
+    
+        // Append the table to the container
+        $("#table-container").empty().append(table);
+        $("#exporter").show();        
+        
+        // Initialize DataTables with pagination
+        table.DataTable({
+            paging: true,
+            searching: false,
+            lengthChange: false,
+            ordering: false,
+            pageLength: 20,
+            "language": {
+                "paginate": {
+                    "next": "Вперед",
+                    "previous": "Назад"
+                },
+                "info": "Показаны с _START_ по _END_ из _TOTAL_ записей"
+            }
+        });
+    }
+</script>
+</body>
+</html>

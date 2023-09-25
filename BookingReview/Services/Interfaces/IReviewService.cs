@@ -1,7 +1,7 @@
 ﻿using BookingReview.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
-namespace BookingReview.Services;
+namespace BookingReview.Services.Interfaces;
 
 public interface IReviewService
 {

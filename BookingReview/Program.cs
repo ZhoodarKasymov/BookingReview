@@ -1,8 +1,11 @@
 using System.Data;
 using System.Net;
 using BookingReview.Services;
+using BookingReview.Services.Interfaces;
 using Microsoft.AspNetCore.Diagnostics;
 using MySql.Data.MySqlClient;
+using PdfSharp.Fonts;
+using PdfSharp.Snippets.Font;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +19,7 @@ builder.Services.AddScoped<IDbConnection>(c => {
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 builder.Services.AddRazorPages();
 builder.Services.AddTransient<IReviewService, ReviewService>();
+builder.Services.AddTransient<IExportService, ExportService>();
 
 var app = builder.Build();
 
@@ -57,5 +61,11 @@ app.MapRazorPages();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapControllerRoute(
+    name: "export-pdf",
+    pattern: "{controller=Export}/{action=Index}");
+
+GlobalFontSettings.FontResolver = new NewFontResolver();
 
 app.Run();
