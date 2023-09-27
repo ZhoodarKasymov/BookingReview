@@ -22,11 +22,11 @@ public class ExportController : Controller
         if (type == ExportType.Excel)
         {
             file = await _exportService.GenerateExcelAsync(filter);
-            return File(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "exported-data.xlsx");
+            return File(file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "экспортированный-отчет.xlsx");
         }
 
         file = await _exportService.GeneratePdfAsync(filter);
-        return File(file, "application/pdf", "exported-data.pdf");
+        return File(file, "application/pdf", "экспортированный-отчет.pdf");
     }
 
     public async Task<IActionResult> Index()

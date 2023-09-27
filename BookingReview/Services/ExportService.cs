@@ -36,8 +36,7 @@ public class ExportService : IExportService
 
     public async Task<IEnumerable<dynamic>> GetCommonReportDataAsync(FilterModel filter)
     {
-        var query = @"SELECT DISTINCT
-                            CONCAT(cl.service_prefix, cl.number) as 'NumberTicket',
+        var query = @"SELECT DISTINCT(CONCAT(cl.service_prefix, cl.number)) as 'NumberTicket',
                             ser.name as 'ServiceName',
                             us.name as 'UserName',
                             cl.stand_time as 'ClientStandTime',
@@ -70,8 +69,16 @@ public class ExportService : IExportService
     public async Task<IEnumerable<dynamic>> GetUserServiceReportAsync(FilterModel filter)
     {
         var mainQuery = string.Empty;
+        var reviewFilter = string.Empty;
+        
+        if (filter.From.HasValue && filter.To.HasValue)
+            reviewFilter = " AND resp_date BETWEEN @From AND @To";
+        else if (filter.From.HasValue)
+            reviewFilter = " AND resp_date >= @From";
+        else if (filter.To.HasValue)
+            reviewFilter = " AND resp_date <= @To";
 
-        var userQuery = @"SELECT 
+        var userQuery = @$"SELECT 
                             u.name as 'Name',
                             COUNT(cl.id) as 'Clients', 
                             MAX(TIMESTAMPDIFF(MINUTE, cl.start_time, cl.finish_time)) as 'MaxWork', 
@@ -80,12 +87,12 @@ public class ExportService : IExportService
                             MAX(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time)) as 'MaxWait', 
                             ROUND(AVG(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time))) as 'AvgWait', 
                             MIN(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time)) as 'MinWait', 
-                            (SELECT COUNT(*) FROM response_event WHERE users_id = u.id) as 'Reviews'
+                            (SELECT COUNT(*) FROM response_event WHERE users_id = u.id{reviewFilter}) as 'Reviews'
                             FROM users u 
                             LEFT JOIN clients cl ON cl.user_id = u.id
                             WHERE u.name <> 'Администратор' AND u.deleted IS NULL";
 
-        var serviceQuery = @"SELECT 
+        var serviceQuery = @$"SELECT 
                             u.name as 'Name',
                             COUNT(cl.id) as 'Clients', 
                             MAX(TIMESTAMPDIFF(MINUTE, cl.start_time, cl.finish_time)) as 'MaxWork', 
@@ -94,7 +101,7 @@ public class ExportService : IExportService
                             MAX(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time)) as 'MaxWait', 
                             ROUND(AVG(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time))) as 'AvgWait', 
                             MIN(TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time)) as 'MinWait', 
-                            (SELECT COUNT(*) FROM response_event WHERE services_id = u.id) as 'Reviews'
+                            (SELECT COUNT(*) FROM response_event WHERE services_id = u.id{reviewFilter}) as 'Reviews'
                             FROM services u
                             LEFT JOIN clients cl ON cl.service_id = u.id
                             WHERE u.deleted IS NULL AND u.name <> ''";
@@ -451,7 +458,7 @@ public class ExportService : IExportService
                 query = " WHERE us.id = @UserId";
         }
 
-        query += " ORDER BY cl.stand_time DESC;";
+        query += " ORDER BY cl.stand_time;";
 
         return query;
     }
