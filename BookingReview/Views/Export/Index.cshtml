@@ -128,20 +128,23 @@
 
         foreach (var mainSubService in services.Where(s => s.prent_id == id))
         {
-            if (mainSubService.prent_id == 1)
+            if (services.Any(s => s.prent_id == mainSubService.id))
             {
-                var headerOption = new TagBuilder("option");
-                headerOption.AddCssClass("disabled-option");
-                headerOption.InnerHtml.AppendHtml(mainSubService.name);
-                result.AppendHtml(headerOption);
-                result.AppendHtml(GetSubServices(mainSubService.id));
-            }
-            else if (services.Any(s => s.prent_id == mainSubService.id))
-            {
-                var optgroup = new TagBuilder("optgroup");
-                optgroup.Attributes["label"] = mainSubService.name;
-                optgroup.InnerHtml.AppendHtml(GetSubServices(mainSubService.id));
-                result.AppendHtml(optgroup);
+                if (mainSubService.prent_id == 1)
+                {
+                    var headerOption = new TagBuilder("option");
+                    headerOption.AddCssClass("disabled-option");
+                    headerOption.InnerHtml.AppendHtml(mainSubService.name);
+                    result.AppendHtml(headerOption);
+                    result.AppendHtml(GetSubServices(mainSubService.id));
+                }
+                else
+                {
+                    var optgroup = new TagBuilder("optgroup");
+                    optgroup.Attributes["label"] = mainSubService.name;
+                    optgroup.InnerHtml.AppendHtml(GetSubServices(mainSubService.id));
+                    result.AppendHtml(optgroup);
+                }
             }
             else
             {
