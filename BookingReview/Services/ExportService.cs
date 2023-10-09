@@ -20,8 +20,9 @@ public class ExportService : IExportService
 
     public async Task<IEnumerable<dynamic>> GetServicesAsync()
     {
-        const string query = @"SELECT id, name FROM services
-                    WHERE deleted IS NULL AND name <> '';";
+        const string query = @"SELECT s.id, s.name, s.prent_id,  sl.name as 'TranslatedName', s.deleted, sl.lang FROM services_langs sl
+                        RIGHT JOIN services s ON s.id = sl.services_id
+                        WHERE s.deleted IS NULL && sl.lang = 'kz_KZ'";
 
         return await _db.QueryAsync(query);
     }
@@ -49,7 +50,7 @@ public class ExportService : IExportService
                             res.name as 'Result'
                             FROM clients cl
                             LEFT JOIN statistic st ON st.client_id = cl.id
-                            LEFT JOIN users us ON us.id = cl.user_id
+                            INNER JOIN users us ON us.id = cl.user_id
                             LEFT JOIN results res ON res.id = st.results_id
                             LEFT JOIN services ser ON ser.id = cl.service_id
                             LEFT JOIN response_event resp ON resp.clients_id = cl.id

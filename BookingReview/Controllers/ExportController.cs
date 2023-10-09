@@ -34,11 +34,7 @@ public class ExportController : Controller
         var services = await _exportService.GetServicesAsync();
         var workers = await _exportService.GetWorkersAsync();
 
-        ViewBag.Services = services.Select(s => new SelectListItem
-        {
-            Text = s.name,
-            Value = s.id.ToString() 
-        });
+        ViewBag.Services = services;
 
         ViewBag.Workers = workers.Select(s => new SelectListItem
         {
@@ -53,7 +49,7 @@ public class ExportController : Controller
     public async Task<PreviewModel> GetPreviewTableAsync(FilterModel filter)
     {
         IEnumerable<dynamic> result;
-        var headers = new List<string>();
+        List<string> headers;
         
         if (filter.IsCommon ?? false)
         {

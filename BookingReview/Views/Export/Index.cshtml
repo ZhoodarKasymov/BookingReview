@@ -1,4 +1,5 @@
 ﻿@page
+@using Microsoft.AspNetCore.Html
 @model BookingReview.Views.Export.Index
 
 @{
@@ -16,6 +17,7 @@
     <link rel="stylesheet" href="~/lib/css/kioskboard-2.3.0.min.css"/>
     <link rel="stylesheet" href="~/lib/css/jquery.dataTables.min.css"/>
     <link rel="stylesheet" href="~/lib/css/dataTables.bootstrap5.min.css"/>
+    <link rel="stylesheet" href="~/lib/sub-menu/dropdown-submenu-dist.css"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
 </head>
 <body>
@@ -51,15 +53,14 @@
                 <div class="col-12 col-md-6">
                     <b style="font-size: 18px;">до:</b><input id="to" class="form-control custom-input-gns" type="date"/>
                 </div>
-                <div class="col-12 col-md-6" id="serviceWrapper">
+                <div class="col-12 col-md-12" id="serviceWrapper">
                     <b style="font-size: 18px">Услуги:</b>
-                    @Html.DropDownList(
-                        "Services",
-                        new SelectList(ViewBag.Services, "Value", "Text"),
-                        "Все",
-                        new { @class = "form-control custom-input-gns", id = "service" })
+                    <select id="service">
+                        <option value="">Все</option>
+                        @GetSubServices(1);
+                    </select>
                 </div>
-                <div class="col-12 col-md-6" id="workerWrapper">
+                <div class="col-12 col-md-12" id="workerWrapper">
                     <b style="font-size: 18px;">Работники:</b>
                     @Html.DropDownList(
                         "Services",
@@ -84,7 +85,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="row mb-3" style="font-size: 15px; display: none;" id="exporter">
             <div class="col-12">
                 Экспортировать в:
@@ -99,16 +100,92 @@
     </main>
 </div>
 
+@functions {
+
+    private string RemoveFirstDigitsFromText(string input)
+    {
+        var result = input;
+
+        foreach (var ch in input)
+        {
+            if (char.IsDigit(ch) || ch == '.')
+            {
+                result = result.Remove(0, 1); // Remove the first character
+            }
+            else
+            {
+                break; // Exit the loop when a non-digit character is encountered
+            }
+        }
+
+        return result;
+    }
+
+    private IHtmlContent GetSubServices(long? id)
+    {
+        var result = new HtmlContentBuilder();
+        var services = (IEnumerable<dynamic>)ViewBag.Services ?? Enumerable.Empty<dynamic>();
+
+        foreach (var mainSubService in services.Where(s => s.prent_id == id))
+        {
+            if (mainSubService.prent_id == 1)
+            {
+                var headerOption = new TagBuilder("option");
+                headerOption.AddCssClass("disabled-option");
+                headerOption.InnerHtml.AppendHtml(mainSubService.name);
+                result.AppendHtml(headerOption);
+                result.AppendHtml(GetSubServices(mainSubService.id));
+            }
+            else if (services.Any(s => s.prent_id == mainSubService.id))
+            {
+                var optgroup = new TagBuilder("optgroup");
+                optgroup.Attributes["label"] = mainSubService.name;
+                optgroup.InnerHtml.AppendHtml(GetSubServices(mainSubService.id));
+                result.AppendHtml(optgroup);
+            }
+            else
+            {
+                var option = new TagBuilder("option");
+                option.Attributes["value"] = mainSubService.id.ToString();
+                option.InnerHtml.AppendHtml(RemoveFirstDigitsFromText(mainSubService.name));
+
+                result.AppendHtml(option);
+            }
+        }
+
+        return result;
+    }
+
+}
+
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/lib/sweetalert2.all.min.js"></script>
 <script src="~/lib/jquery.dataTables.min.js"></script>
+<script src="~/lib/sub-menu/dropdown-submenu.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 <script>
     var isCommonReportService;
     var isCommonReportUser;
 
     $(document).ready(function() {  
+        $("#service").dropdownSubmenu({        
+          // Watch programmatic changes
+          watchDisabled: true,  
+          watchSelectClasses: true,
+          watchHidden: true,  
+          watchChangeVal: false,
+          
+          // copy option's classes
+          copyOptionClasses:   true,
+          
+          // default CSS classes
+          wrapClass: "dropdown-submenu-wrapper", 
+          tuneClass: "dropdown-submenu-skin", 
+          customClass: "multi-select", 
+          
+        });
+        
         $("#isCommonReportService").on("click", function(){             
              if ($("#isCommonReportService").is(":checked")){
                  $("#workerWrapper").hide();
@@ -123,6 +200,7 @@
                  isCommonReportService = false;
                  isCommonReportUser = false;
                  $("#service").val(undefined);
+                 $("#service").dropdownSubmenu();
                  $("#worker").val(undefined);
              }
          });
@@ -135,12 +213,14 @@
                 isCommonReportService = false;
                 isCommonReportUser = true;
                 $("#service").val(undefined);
+                $("#service").dropdownSubmenu();
             }else{
                 $("#workerWrapper").show();
                 $("#serviceWrapper").show();
                 isCommonReportService = false;
                 isCommonReportUser = false;
                 $("#service").val(undefined);
+                $("#service").dropdownSubmenu();
                 $("#worker").val(undefined);
             }
         });        

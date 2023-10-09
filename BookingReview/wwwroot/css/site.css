@@ -293,3 +293,17 @@ h1 > p {
     width: 45px !important;
     height: 45px !important;
 }
+
+.multi-select  {
+    width: 100% !important;
+}
+
+.dropdown-submenu-skin .dropdown-field-watch {
+    max-width: unset !important;
+}
+
+.disabled-option {
+    pointer-events: none;
+    color: black;
+    font-weight: bold;
+}
