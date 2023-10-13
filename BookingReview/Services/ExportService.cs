@@ -5,6 +5,9 @@ using Dapper;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Tables;
 using MigraDoc.Rendering;
+using NPOI.HSSF.UserModel;
+using NPOI.HSSF.Util;
+using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 
 namespace BookingReview.Services;
@@ -20,7 +23,8 @@ public class ExportService : IExportService
 
     public async Task<IEnumerable<dynamic>> GetServicesAsync()
     {
-        const string query = @"SELECT s.id, s.name, s.prent_id,  sl.name as 'TranslatedName', s.deleted, sl.lang FROM services_langs sl
+        const string query =
+            @"SELECT s.id, s.name, s.prent_id,  sl.name as 'TranslatedName', s.deleted, sl.lang FROM services_langs sl
                         RIGHT JOIN services s ON s.id = sl.services_id
                         WHERE s.deleted IS NULL && sl.lang = 'kz_KZ'";
 
@@ -71,7 +75,7 @@ public class ExportService : IExportService
     {
         var mainQuery = string.Empty;
         var reviewFilter = string.Empty;
-        
+
         if (filter.From.HasValue && filter.To.HasValue)
             reviewFilter = " AND resp_date BETWEEN @From AND @To";
         else if (filter.From.HasValue)
@@ -105,7 +109,7 @@ public class ExportService : IExportService
                             (SELECT COUNT(*) FROM response_event WHERE services_id = u.id{reviewFilter}) as 'Reviews'
                             FROM services u
                             LEFT JOIN clients cl ON cl.service_id = u.id
-                            WHERE u.deleted IS NULL AND u.name <> ''";
+                            WHERE u.deleted IS NULL AND u.name <> '' AND u.name NOT LIKE '%Окно%'";
 
         if (filter.IsService ?? false)
             mainQuery = serviceQuery;
@@ -122,7 +126,7 @@ public class ExportService : IExportService
             UserId = filter.UserId
         });
     }
-    
+
     public async Task<byte[]> GenerateExcelAsync(FilterModel filter)
     {
         IEnumerable<dynamic> result;
@@ -130,7 +134,7 @@ public class ExportService : IExportService
         var worksheet = workbook.CreateSheet("Отчет");
         var headerRow = worksheet.CreateRow(0);
         var rowIndex = 1;
-        
+
         if (filter.IsCommon ?? false)
         {
             result = await GetUserServiceReportAsync(filter);
@@ -144,22 +148,57 @@ public class ExportService : IExportService
             headerRow.CreateCell(6).SetCellValue("Средняя время ожидания");
             headerRow.CreateCell(7).SetCellValue("Минимальная время ожидания");
             headerRow.CreateCell(8).SetCellValue("Кол-во отзывов");
-            
-            foreach (var item in result)
-            {
-                var dataRow = worksheet.CreateRow(rowIndex++);
-                var avgWork = item.AvgWork?.ToString() ?? "0";
-                var avgWait = item.AvgWait?.ToString() ?? "0";
 
-                dataRow.CreateCell(0).SetCellValue(item.Name);
-                dataRow.CreateCell(1).SetCellValue(item.Clients ?? "0");
-                dataRow.CreateCell(2).SetCellValue(item.MaxWork ?? "0");
-                dataRow.CreateCell(3).SetCellValue(avgWork);
-                dataRow.CreateCell(4).SetCellValue(item.MinWork ?? "0");
-                dataRow.CreateCell(5).SetCellValue(item.MaxWait ?? "0");
-                dataRow.CreateCell(6).SetCellValue(avgWait);
-                dataRow.CreateCell(7).SetCellValue(item.MinWait ?? "0");
-                dataRow.CreateCell(8).SetCellValue(item.Reviews ?? "0");
+            if (filter.IsRating.HasValue && filter.IsRating.Value)
+            {
+                var partSize = (int)Math.Ceiling(result.Count() / 3.0);
+                var colors = new[]
+                {
+                    new XSSFColor(new[] { (byte)227, (byte)230, (byte)227}), 
+                    new XSSFColor(new[] { (byte)217, (byte)236, (byte)228 }), 
+                    new XSSFColor(new[] { (byte)180, (byte)213, (byte)197 })
+                };
+                
+                for (int partIndex = 0; partIndex < 3; partIndex++)
+                {
+                    var currentPart = result.Skip(partIndex * partSize).Take(partSize);
+
+                    foreach (var item in currentPart)
+                    {
+                        var dataRow = worksheet.CreateRow(rowIndex++);
+                        var avgWork = item.AvgWork?.ToString() ?? "0";
+                        var avgWait = item.AvgWait?.ToString() ?? "0";
+
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 0, item.Name);
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 1, item.Clients?.ToString() ?? "0");
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 2, item.MaxWork?.ToString() ?? "0");
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 3, avgWork);
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 4, item.MinWork?.ToString() ?? "0");
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 5, item.MaxWait?.ToString() ?? "0");
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 6, avgWait);
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 7, item.MinWait?.ToString() ?? "0");
+                        CreateCellWithStyles(dataRow, workbook, colors[partIndex], 8, item.Reviews?.ToString() ?? "0");
+                    }
+                }
+            }
+            else
+            {
+                foreach (var item in result)
+                {
+                    var dataRow = worksheet.CreateRow(rowIndex++);
+                    var avgWork = item.AvgWork?.ToString() ?? "0";
+                    var avgWait = item.AvgWait?.ToString() ?? "0";
+
+                    dataRow.CreateCell(0).SetCellValue(item.Name);
+                    dataRow.CreateCell(1).SetCellValue(item.Clients ?? "0");
+                    dataRow.CreateCell(2).SetCellValue(item.MaxWork ?? "0");
+                    dataRow.CreateCell(3).SetCellValue(avgWork);
+                    dataRow.CreateCell(4).SetCellValue(item.MinWork ?? "0");
+                    dataRow.CreateCell(5).SetCellValue(item.MaxWait ?? "0");
+                    dataRow.CreateCell(6).SetCellValue(avgWait);
+                    dataRow.CreateCell(7).SetCellValue(item.MinWait ?? "0");
+                    dataRow.CreateCell(8).SetCellValue(item.Reviews ?? "0");
+                }
             }
             
             // Auto-size columns (optional)
@@ -171,7 +210,7 @@ public class ExportService : IExportService
         else
         {
             result = await GetCommonReportDataAsync(filter);
-            
+
             headerRow.CreateCell(0).SetCellValue("Номер талона");
             headerRow.CreateCell(1).SetCellValue("Услуга");
             headerRow.CreateCell(2).SetCellValue("Работник");
@@ -187,7 +226,7 @@ public class ExportService : IExportService
             foreach (var item in result)
             {
                 var dataRow = worksheet.CreateRow(rowIndex++);
-                
+
                 dataRow.CreateCell(0).SetCellValue(item.NumberTicket);
                 dataRow.CreateCell(1).SetCellValue(item.ServiceName);
                 dataRow.CreateCell(2).SetCellValue(item.UserName);
@@ -200,7 +239,7 @@ public class ExportService : IExportService
                 dataRow.CreateCell(9).SetCellValue(item.ReviewComment ?? "");
                 dataRow.CreateCell(10).SetCellValue(item.Result ?? "");
             }
-            
+
             // Auto-size columns (optional)
             for (int col = 0; col < 11; col++)
             {
@@ -229,7 +268,7 @@ public class ExportService : IExportService
         section.PageSetup.RightMargin = Unit.FromCentimeter(0.5); // Example right margin
         section.PageSetup.TopMargin = Unit.FromCentimeter(1); // Example top margin
         section.PageSetup.BottomMargin = Unit.FromCentimeter(1); // Example bottom margin
-        
+
         IEnumerable<dynamic> result;
 
         string headerTitle;
@@ -243,14 +282,14 @@ public class ExportService : IExportService
         var headerDescription = section.AddParagraph(headerTitle);
         headerDescription.Format.Alignment = ParagraphAlignment.Center;
         headerDescription.Format.SpaceAfter = Unit.FromCentimeter(1);
-        
+
         var table = section.AddTable();
         table.Borders.Width = 0.1;
 
         if (filter.IsCommon ?? false)
         {
             result = await GetUserServiceReportAsync(filter);
-            
+
             for (int i = 0; i < 9; i++)
             {
                 var column = table.AddColumn(Unit.FromCentimeter(2.2)); // Adjust the column width as needed
@@ -263,8 +302,8 @@ public class ExportService : IExportService
             headerRow.Format.Alignment = ParagraphAlignment.Center;
             headerRow.Format.Font.Size = 8;
             headerRow.Format.Font.Bold = true;
-            headerRow.Shading.Color = Colors.LightGray; // Optional background color for headers
-            
+            headerRow.Shading.Color = Colors.White; // Optional background color for headers
+
             // Add header text for each column
             GenerateHeaderRowPdf(headerRow, new[]
             {
@@ -278,35 +317,66 @@ public class ExportService : IExportService
                 "Минимальная время ожидания",
                 "Кол-во отзывов"
             });
-
-            foreach (var item in result)
+            
+            if (filter.IsRating.HasValue && filter.IsRating.Value)
             {
-                var dataRow = table.AddRow();
-                dataRow.Format.Alignment = ParagraphAlignment.Center;
+                var partSize = (int)Math.Ceiling(result.Count() / 3.0);
+                var colors = new[] { new Color(227, 230, 227), new Color(217, 236, 228), new Color(180, 213, 197) };
                 
-                // Add data for each column
-                dataRow.Cells[0].AddParagraph(CorrectedText(item.Name));
-                dataRow.Cells[1].AddParagraph(item.Clients?.ToString() ?? "0");
-                dataRow.Cells[2].AddParagraph(item.MaxWork?.ToString() ?? "0");
-                dataRow.Cells[3].AddParagraph(item.AvgWork?.ToString() ?? "0");
-                dataRow.Cells[4].AddParagraph(item.MinWork?.ToString() ?? "0");
-                dataRow.Cells[5].AddParagraph(item.MaxWait?.ToString() ?? "0");
-                dataRow.Cells[6].AddParagraph(item.AvgWait?.ToString() ?? "0");
-                dataRow.Cells[7].AddParagraph(item.MinWait?.ToString() ?? "0");
-                dataRow.Cells[8].AddParagraph(item.Reviews?.ToString() ?? "0");
+                for (int partIndex = 0; partIndex < 3; partIndex++)
+                {
+                    var currentPart = result.Skip(partIndex * partSize).Take(partSize);
+                    
+                    foreach (var item in currentPart)
+                    {
+                        var dataRow = table.AddRow();
+                        dataRow.Format.LeftIndent = -3;
+                        dataRow.Format.RightIndent = -3;
+                        dataRow.Shading.Color = colors[partIndex];
+
+                        // Add data for each column
+                        dataRow.Cells[0].AddParagraph(CorrectedText(item.Name));
+                        dataRow.Cells[1].AddParagraph(item.Clients?.ToString() ?? "0");
+                        dataRow.Cells[2].AddParagraph(item.MaxWork?.ToString() ?? "0");
+                        dataRow.Cells[3].AddParagraph(item.AvgWork?.ToString() ?? "0");
+                        dataRow.Cells[4].AddParagraph(item.MinWork?.ToString() ?? "0");
+                        dataRow.Cells[5].AddParagraph(item.MaxWait?.ToString() ?? "0");
+                        dataRow.Cells[6].AddParagraph(item.AvgWait?.ToString() ?? "0");
+                        dataRow.Cells[7].AddParagraph(item.MinWait?.ToString() ?? "0");
+                        dataRow.Cells[8].AddParagraph(item.Reviews?.ToString() ?? "0");
+                    }
+                }
+            }
+            else
+            {
+                foreach (var item in result)
+                {
+                    var dataRow = table.AddRow();
+
+                    // Add data for each column
+                    dataRow.Cells[0].AddParagraph(CorrectedText(item.Name));
+                    dataRow.Cells[1].AddParagraph(item.Clients?.ToString() ?? "0");
+                    dataRow.Cells[2].AddParagraph(item.MaxWork?.ToString() ?? "0");
+                    dataRow.Cells[3].AddParagraph(item.AvgWork?.ToString() ?? "0");
+                    dataRow.Cells[4].AddParagraph(item.MinWork?.ToString() ?? "0");
+                    dataRow.Cells[5].AddParagraph(item.MaxWait?.ToString() ?? "0");
+                    dataRow.Cells[6].AddParagraph(item.AvgWait?.ToString() ?? "0");
+                    dataRow.Cells[7].AddParagraph(item.MinWait?.ToString() ?? "0");
+                    dataRow.Cells[8].AddParagraph(item.Reviews?.ToString() ?? "0");
+                }
             }
         }
         else
         {
             result = await GetCommonReportDataAsync(filter);
-            
+
             for (int i = 0; i < 11; i++)
             {
                 var column = table.AddColumn(Unit.FromCentimeter(1.85)); // Adjust the column width as needed
                 column.Format.Alignment = ParagraphAlignment.Center;
                 column.Format.Font.Size = 7;
             }
-            
+
             var headerRow = table.AddRow();
             headerRow.HeadingFormat = true;
             headerRow.Format.Alignment = ParagraphAlignment.Center;
@@ -349,12 +419,12 @@ public class ExportService : IExportService
                 dataRow.Cells[10].AddParagraph(item.Result ?? "");
             }
         }
-        
+
         var renderer = new PdfDocumentRenderer
         {
             Document = document
         };
-        
+
         renderer.RenderDocument();
 
         using var ms = new MemoryStream();
@@ -363,7 +433,7 @@ public class ExportService : IExportService
     }
 
     #region Private methods
-    
+
     private static void GenerateHeaderRowPdf(Row headerRow, params string[] headers)
     {
         var index = 0;
@@ -386,7 +456,7 @@ public class ExportService : IExportService
 
             // Find the last space within the allowed length
             var lastSpaceIndex = longText.LastIndexOf(' ', currentIndex + substringLength - 1, substringLength);
-    
+
             if (lastSpaceIndex != -1 && lastSpaceIndex >= currentIndex)
             {
                 // Split at the last space
@@ -421,7 +491,10 @@ public class ExportService : IExportService
         if (!string.IsNullOrEmpty(filter.UserId))
             query += " AND u.id = @UserId";
 
-        query += " GROUP BY u.id, u.name;";
+        query += " GROUP BY u.id, u.name";
+
+        if (filter.IsRating.HasValue && filter.IsRating.Value)
+            query += " ORDER BY COUNT(cl.id) DESC";
 
         return query;
     }
@@ -459,9 +532,24 @@ public class ExportService : IExportService
                 query = " WHERE us.id = @UserId";
         }
 
-        query += " ORDER BY cl.stand_time;";
+        query += " AND ser.name NOT LIKE '%Окно%' ORDER BY cl.stand_time;";
 
         return query;
+    }
+
+    private ICellStyle CreateCellStyle(XSSFWorkbook workbook, XSSFColor xssfColor)
+    {
+        var cellStyle = (XSSFCellStyle)workbook.CreateCellStyle();
+        cellStyle.SetFillForegroundColor(xssfColor);
+        cellStyle.FillPattern = FillPattern.SolidForeground;
+        return cellStyle;
+    }
+
+    private void CreateCellWithStyles(IRow dataRow, XSSFWorkbook workbook, XSSFColor xssfColor, int index, string value)
+    {
+        var cel = dataRow.CreateCell(index);
+        cel.CellStyle = CreateCellStyle(workbook, xssfColor);
+        cel.SetCellValue(value);
     }
 
     #endregion

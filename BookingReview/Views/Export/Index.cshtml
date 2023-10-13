@@ -80,6 +80,12 @@
                         <label class="form-check-label" for="isCommonReportUser">Общий отчет по работникам</label>
                     </div>
                 </div>
+                <div class="col-12 mt-3" id="rating-wrapper" style="display: none;">
+                    <div class="form-check form-switch">
+                        <input style="box-shadow: none" class="form-check-input" type="checkbox" id="isRating" value="true">
+                        <label class="form-check-label" for="isRating">Фильтрация по рейтигу</label>
+                    </div>
+                </div>
                 <div>
                     <button style="box-shadow: none; background-color: #0F9197; border-radius: 0; border-color: unset;" id="generate" class="btn btn-primary mt-4">Сгенерировать отчет</button>
                 </div>
@@ -193,6 +199,7 @@
              if ($("#isCommonReportService").is(":checked")){
                  $("#workerWrapper").hide();
                  $("#serviceWrapper").show();
+                 $("#rating-wrapper").show();
                  $("#isCommonReportUser").prop("checked", false);
                  isCommonReportService = true;
                  isCommonReportUser = false;
@@ -200,6 +207,8 @@
              }else{
                  $("#workerWrapper").show();
                  $("#serviceWrapper").show();
+                 $("#rating-wrapper").hide();
+                 $("#isRating").prop("checked", false);
                  isCommonReportService = false;
                  isCommonReportUser = false;
                  $("#service").val(undefined);
@@ -212,6 +221,7 @@
             if ($("#isCommonReportUser").is(":checked")){
                 $("#workerWrapper").show();
                 $("#serviceWrapper").hide();
+                $("#rating-wrapper").show();
                 $("#isCommonReportService").prop("checked", false);
                 isCommonReportService = false;
                 isCommonReportUser = true;
@@ -220,6 +230,8 @@
             }else{
                 $("#workerWrapper").show();
                 $("#serviceWrapper").show();
+                $("#rating-wrapper").hide();
+                $("#isRating").prop("checked", false);
                 isCommonReportService = false;
                 isCommonReportUser = false;
                 $("#service").val(undefined);
@@ -246,6 +258,7 @@
                if (isCommonReportService || isCommonReportUser){             
                    data.isCommon = true;
                    data.isService = isCommonReportService ?? false;
+                   data.isRating = $("#isRating").is(":checked");
                }
                
                showLoader();
@@ -298,6 +311,7 @@
             if (isCommonReportService || isCommonReportUser) {
                 data.isCommon = true;
                 data.isService = isCommonReportService ?? false;
+                data.isRating = $("#isRating").is(":checked");
             }
             
             // Create the URL with query parameters
@@ -322,35 +336,55 @@
     
         // Create table header row
         let headerRow = $("<tr>").appendTo(thead);
-        $.each(data.headers, function(index, header) {
+        $.each(data.headers, function (index, header) {
             $("<th>").attr("scope", "col").text(header).appendTo(headerRow); // Add table headers
         });
-        
-        // Create table data rows
-        $.each(data.results, function(index, row) {
-            let dataRow = $("<tr>").appendTo(tbody);
-            $.each(row, function(index, cellData) {
-                let $cell = $("<td>").appendTo(dataRow); // Add table cells
-        
-                // Check if the cellData looks like a date
-                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(cellData)) {
-                    // If it's a date, parse it and convert to local time
-                    let date = new Date(cellData);
-                    let localTime = date.toLocaleString(); // Convert to local time format
-        
-                    // Set the cell content to the local time
-                    $cell.text(localTime);
-                } else {
-                    // If it's not a date, simply display the original cellData
-                    $cell.text(cellData);
-                }
+    
+        // Calculate the number of rows in each part
+        const totalRows = data.results.length;
+        const rowsPerPart = Math.ceil(totalRows / 3);
+    
+        // Divide data results into three parts
+        const parts = [];
+        for (let i = 0; i < totalRows; i += rowsPerPart) {
+            parts.push(data.results.slice(i, i + rowsPerPart));
+        }
+    
+        // Define an array of background colors
+        const colors = ["light-green", "green", "dark-green"];
+    
+        // Create table data rows and apply background colors
+        $.each(parts, function (partIndex, part) {
+            $.each(part, function (index, row) {
+                let dataRow = $("<tr>").appendTo(tbody);
+                $.each(row, function (cellIndex, cellData) {
+                    let $cell = $("<td>").appendTo(dataRow); // Add table cells
+                    
+                    if ($("#isRating").is(":checked")){
+                        // Apply background color based on the part
+                        $cell.addClass(colors[partIndex]);
+                    }                    
+    
+                    // Check if the cellData looks like a date
+                    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(cellData)) {
+                        // If it's a date, parse it and convert to local time
+                        let date = new Date(cellData);
+                        let localTime = date.toLocaleString(); // Convert to local time format
+    
+                        // Set the cell content to the local time
+                        $cell.text(localTime);
+                    } else {
+                        // If it's not a date, simply display the original cellData
+                        $cell.text(cellData);
+                    }
+                });
             });
         });
     
         // Append the table to the container
         $("#table-container").empty().append(table);
-        $("#exporter").show();        
-        
+        $("#exporter").show();
+    
         // Initialize DataTables with pagination
         table.DataTable({
             paging: true,

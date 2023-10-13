@@ -307,3 +307,15 @@ h1 > p {
     color: black;
     font-weight: bold;
 }
+
+.light-green {
+    background-color: #eff2ef !important;
+}
+
+.green {
+    background-color: #e5f9f0 !important;
+}
+
+.dark-green {
+    background-color: #bee0d0  !important;
+}
