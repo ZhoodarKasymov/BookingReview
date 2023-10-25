@@ -148,7 +148,14 @@
                 {
                     var optgroup = new TagBuilder("optgroup");
                     optgroup.Attributes["label"] = mainSubService.name;
+                    
+                    var allOption = new TagBuilder("option");
+                    allOption.Attributes["value"] = "[parent]" + mainSubService.id.ToString();
+                    allOption.InnerHtml.Append("Все -> " + mainSubService.name);
+                    
+                    optgroup.InnerHtml.AppendHtml(allOption);
                     optgroup.InnerHtml.AppendHtml(GetSubServices(mainSubService.id));
+                    
                     result.AppendHtml(optgroup);
                 }
             }
@@ -191,8 +198,7 @@
           // default CSS classes
           wrapClass: "dropdown-submenu-wrapper", 
           tuneClass: "dropdown-submenu-skin", 
-          customClass: "multi-select", 
-          
+          customClass: "multi-select",         
         });
         
         $("#isCommonReportService").on("click", function(){             
@@ -363,8 +369,8 @@
                     if ($("#isRating").is(":checked")){
                         // Apply background color based on the part
                         $cell.addClass(colors[partIndex]);
-                    }                    
-    
+                    }         
+                    
                     // Check if the cellData looks like a date
                     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(cellData)) {
                         // If it's a date, parse it and convert to local time
@@ -373,7 +379,15 @@
     
                         // Set the cell content to the local time
                         $cell.text(localTime);
-                    } else {
+                    }
+                    else if (cellIndex === "ServiceName" || cellIndex === "Name") {
+                        let cellDataWithoutDigits = RemoveFirstDigitsFromText(cellData);
+                        $cell.text(cellDataWithoutDigits);
+                    } 
+                    else if (cellIndex === "UserNotWork") {
+                        $cell.text(cellData ?? "0");
+                    } 
+                    else {
                         // If it's not a date, simply display the original cellData
                         $cell.text(cellData);
                     }
@@ -400,6 +414,21 @@
                 "info": "Показаны с _START_ по _END_ из _TOTAL_ записей"
             }
         });
+    }
+    
+    function RemoveFirstDigitsFromText(input) {
+        let result = input;
+    
+        for (let i = 0; i < input.length; i++) {
+            let ch = input[i];
+            if (!isNaN(ch) || ch === '.') {
+                result = result.substring(1);
+            } else {
+                break;
+            }
+        }
+    
+        return result;
     }
 </script>
 </body>

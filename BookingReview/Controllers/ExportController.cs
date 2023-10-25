@@ -81,11 +81,18 @@ public class ExportController : Controller
                 "Дата начало обслуживания",
                 "Дата конца обслуживания",
                 "Время ожидания клиента (Мин)",
-                "Время обслуживания клиента (Мин)",
+                "Время обслуживания клиента (Мин)"
+            };
+            
+            if(!string.IsNullOrEmpty(filter.UserId))
+                headers.Add("Время бездействия работника (Мин)");
+            
+            headers.AddRange(new []
+            {
                 "Отзыв",
                 "Комментарий к отзыву",
                 "Результат"
-            };
+            });
         }
 
         return new PreviewModel

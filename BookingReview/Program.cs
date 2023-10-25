@@ -62,7 +62,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
-    name: "export-pdf",
+    name: "export",
     pattern: "{controller=Export}/{action=Index}");
 
 GlobalFontSettings.FontResolver = new NewFontResolver();

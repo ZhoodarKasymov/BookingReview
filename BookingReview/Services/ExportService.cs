@@ -5,8 +5,6 @@ using Dapper;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Tables;
 using MigraDoc.Rendering;
-using NPOI.HSSF.UserModel;
-using NPOI.HSSF.Util;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 
@@ -41,7 +39,11 @@ public class ExportService : IExportService
 
     public async Task<IEnumerable<dynamic>> GetCommonReportDataAsync(FilterModel filter)
     {
-        var query = @"SELECT DISTINCT(CONCAT(cl.service_prefix, cl.number)) as 'NumberTicket',
+        var notUserWorkField = !string.IsNullOrEmpty(filter.UserId)
+            ? "ABS(TIMESTAMPDIFF(MINUTE, LAG(cl.finish_time) OVER (ORDER BY cl.stand_time), cl.start_time)) AS 'UserNotWork',"
+            : string.Empty;
+
+        var query = @$"SELECT DISTINCT(CONCAT(cl.service_prefix, cl.number)) as 'NumberTicket',
                             ser.name as 'ServiceName',
                             us.name as 'UserName',
                             cl.stand_time as 'ClientStandTime',
@@ -49,6 +51,7 @@ public class ExportService : IExportService
                             cl.finish_time as 'ClientFinishTime',
                             TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time) as 'ClientWaitPeriod',
                             TIMESTAMPDIFF(MINUTE, cl.start_time, cl.finish_time) as 'UserWorkPeriod',
+                            {notUserWorkField}
                             respo.name as 'ReviewName',
                             resp.comment as 'ReviewComment',
                             res.name as 'Result'
@@ -138,7 +141,7 @@ public class ExportService : IExportService
         if (filter.IsCommon ?? false)
         {
             result = await GetUserServiceReportAsync(filter);
-            
+
             headerRow.CreateCell(0).SetCellValue(filter.IsService ?? false ? "Услуга" : "Работник");
             headerRow.CreateCell(1).SetCellValue("Кол-во клиентов");
             headerRow.CreateCell(2).SetCellValue("Максимальная время обслуживания");
@@ -154,11 +157,11 @@ public class ExportService : IExportService
                 var partSize = (int)Math.Ceiling(result.Count() / 3.0);
                 var colors = new[]
                 {
-                    new XSSFColor(new[] { (byte)227, (byte)230, (byte)227}), 
-                    new XSSFColor(new[] { (byte)217, (byte)236, (byte)228 }), 
+                    new XSSFColor(new[] { (byte)227, (byte)230, (byte)227 }),
+                    new XSSFColor(new[] { (byte)217, (byte)236, (byte)228 }),
                     new XSSFColor(new[] { (byte)180, (byte)213, (byte)197 })
                 };
-                
+
                 for (int partIndex = 0; partIndex < 3; partIndex++)
                 {
                     var currentPart = result.Skip(partIndex * partSize).Take(partSize);
@@ -200,7 +203,7 @@ public class ExportService : IExportService
                     dataRow.CreateCell(8).SetCellValue(item.Reviews ?? "0");
                 }
             }
-            
+
             // Auto-size columns (optional)
             for (int col = 0; col < 9; col++)
             {
@@ -211,6 +214,8 @@ public class ExportService : IExportService
         {
             result = await GetCommonReportDataAsync(filter);
 
+            var isNewNotWorkField = !string.IsNullOrEmpty(filter.UserId);
+
             headerRow.CreateCell(0).SetCellValue("Номер талона");
             headerRow.CreateCell(1).SetCellValue("Услуга");
             headerRow.CreateCell(2).SetCellValue("Работник");
@@ -219,9 +224,20 @@ public class ExportService : IExportService
             headerRow.CreateCell(5).SetCellValue("Дата конца обслуживания");
             headerRow.CreateCell(6).SetCellValue("Время ожидания клиента (Мин)");
             headerRow.CreateCell(7).SetCellValue("Время обслуживания клиента (Мин)");
-            headerRow.CreateCell(8).SetCellValue("Отзыв");
-            headerRow.CreateCell(9).SetCellValue("Комментарий к отзыву");
-            headerRow.CreateCell(10).SetCellValue("Результат");
+
+            if (isNewNotWorkField)
+            {
+                headerRow.CreateCell(8).SetCellValue("Время бездействия работника (Мин)");
+                headerRow.CreateCell(9).SetCellValue("Отзыв");
+                headerRow.CreateCell(10).SetCellValue("Комментарий к отзыву");
+                headerRow.CreateCell(11).SetCellValue("Результат");
+            }
+            else
+            {
+                headerRow.CreateCell(8).SetCellValue("Отзыв");
+                headerRow.CreateCell(9).SetCellValue("Комментарий к отзыву");
+                headerRow.CreateCell(10).SetCellValue("Результат");
+            }
 
             foreach (var item in result)
             {
@@ -235,13 +251,26 @@ public class ExportService : IExportService
                 dataRow.CreateCell(5).SetCellValue(item.ClientFinishTime?.ToString() ?? "-");
                 dataRow.CreateCell(6).SetCellValue(item.ClientWaitPeriod?.ToString() ?? "0");
                 dataRow.CreateCell(7).SetCellValue(item.UserWorkPeriod?.ToString() ?? "0");
-                dataRow.CreateCell(8).SetCellValue(item.ReviewName ?? "");
-                dataRow.CreateCell(9).SetCellValue(item.ReviewComment ?? "");
-                dataRow.CreateCell(10).SetCellValue(item.Result ?? "");
+
+                if (isNewNotWorkField)
+                {
+                    dataRow.CreateCell(8).SetCellValue(item.UserNotWork?.ToString() ?? "0");
+                    dataRow.CreateCell(9).SetCellValue(item.ReviewName ?? "");
+                    dataRow.CreateCell(10).SetCellValue(item.ReviewComment ?? "");
+                    dataRow.CreateCell(11).SetCellValue(item.Result ?? "");
+                }
+                else
+                {
+                    dataRow.CreateCell(8).SetCellValue(item.ReviewName ?? "");
+                    dataRow.CreateCell(9).SetCellValue(item.ReviewComment ?? "");
+                    dataRow.CreateCell(10).SetCellValue(item.Result ?? "");
+                }
             }
 
+            var autoSizeHeaderLength = isNewNotWorkField ? 12 : 11;
+
             // Auto-size columns (optional)
-            for (int col = 0; col < 11; col++)
+            for (int col = 0; col < autoSizeHeaderLength; col++)
             {
                 worksheet.AutoSizeColumn(col);
             }
@@ -257,17 +286,16 @@ public class ExportService : IExportService
     {
         var document = new Document();
         var section = document.AddSection();
+
         // Set page orientation to Portrait (or Landscape if needed)
         section.PageSetup.Orientation = Orientation.Portrait;
-
         // Set page size to A4
         section.PageSetup.PageFormat = PageFormat.A4;
 
-        // Adjust margins (if needed)
-        section.PageSetup.LeftMargin = Unit.FromCentimeter(0.5); // Example left margin
-        section.PageSetup.RightMargin = Unit.FromCentimeter(0.5); // Example right margin
-        section.PageSetup.TopMargin = Unit.FromCentimeter(1); // Example top margin
-        section.PageSetup.BottomMargin = Unit.FromCentimeter(1); // Example bottom margin
+        section.PageSetup.LeftMargin = Unit.FromCentimeter(0.5);
+        section.PageSetup.RightMargin = Unit.FromCentimeter(0.5);
+        section.PageSetup.TopMargin = Unit.FromCentimeter(1);
+        section.PageSetup.BottomMargin = Unit.FromCentimeter(1);
 
         IEnumerable<dynamic> result;
 
@@ -304,7 +332,6 @@ public class ExportService : IExportService
             headerRow.Format.Font.Bold = true;
             headerRow.Shading.Color = Colors.White; // Optional background color for headers
 
-            // Add header text for each column
             GenerateHeaderRowPdf(headerRow, new[]
             {
                 filter.IsService ?? false ? "Услуга" : "Работник",
@@ -317,16 +344,16 @@ public class ExportService : IExportService
                 "Минимальная время ожидания",
                 "Кол-во отзывов"
             });
-            
+
             if (filter.IsRating.HasValue && filter.IsRating.Value)
             {
                 var partSize = (int)Math.Ceiling(result.Count() / 3.0);
                 var colors = new[] { new Color(227, 230, 227), new Color(217, 236, 228), new Color(180, 213, 197) };
-                
+
                 for (int partIndex = 0; partIndex < 3; partIndex++)
                 {
                     var currentPart = result.Skip(partIndex * partSize).Take(partSize);
-                    
+
                     foreach (var item in currentPart)
                     {
                         var dataRow = table.AddRow();
@@ -334,7 +361,6 @@ public class ExportService : IExportService
                         dataRow.Format.RightIndent = -3;
                         dataRow.Shading.Color = colors[partIndex];
 
-                        // Add data for each column
                         dataRow.Cells[0].AddParagraph(CorrectedText(item.Name));
                         dataRow.Cells[1].AddParagraph(item.Clients?.ToString() ?? "0");
                         dataRow.Cells[2].AddParagraph(item.MaxWork?.ToString() ?? "0");
@@ -353,7 +379,6 @@ public class ExportService : IExportService
                 {
                     var dataRow = table.AddRow();
 
-                    // Add data for each column
                     dataRow.Cells[0].AddParagraph(CorrectedText(item.Name));
                     dataRow.Cells[1].AddParagraph(item.Clients?.ToString() ?? "0");
                     dataRow.Cells[2].AddParagraph(item.MaxWork?.ToString() ?? "0");
@@ -370,9 +395,12 @@ public class ExportService : IExportService
         {
             result = await GetCommonReportDataAsync(filter);
 
-            for (int i = 0; i < 11; i++)
+            var isNewNotWorkField = !string.IsNullOrEmpty(filter.UserId);
+            var autoSizeHeaderLength = isNewNotWorkField ? 12 : 11;
+
+            for (int i = 0; i < autoSizeHeaderLength; i++)
             {
-                var column = table.AddColumn(Unit.FromCentimeter(1.85)); // Adjust the column width as needed
+                var column = table.AddColumn(Unit.FromCentimeter(isNewNotWorkField ? 1.70 : 1.85));
                 column.Format.Alignment = ParagraphAlignment.Center;
                 column.Format.Font.Size = 7;
             }
@@ -382,30 +410,34 @@ public class ExportService : IExportService
             headerRow.Format.Alignment = ParagraphAlignment.Center;
             headerRow.Format.Font.Size = 7;
             headerRow.Format.Font.Bold = true;
-            headerRow.Shading.Color = Colors.LightGray; // Optional background color for headers
+            headerRow.Shading.Color = Colors.LightGray;
 
-            // Add header text for each column
-            GenerateHeaderRowPdf(headerRow, new[]
+            var headerTitles = new List<string>
             {
                 "Номер талона",
                 "Услуга",
                 "Работник",
-                "Дата принятие клиента",
-                "Дата начало обслуживания",
+                "Дата принятия клиента",
+                "Дата начала обслуживания",
                 "Дата конца обслуживания",
                 "Время ожидания клиента (Мин)",
-                "Время обслуживания клиента (Мин)",
-                "Отзыв",
-                "Комментарий к отзыву",
-                "Результат"
-            });
+                "Время обслуживания клиента (Мин)"
+            };
+
+            if (isNewNotWorkField)
+            {
+                headerTitles.Add("Время бездействия работника (Мин)");
+            }
+
+            headerTitles.AddRange(new[] { "Отзыв", "Комментарий к отзыву", "Результат" });
+
+            GenerateHeaderRowPdf(headerRow, headerTitles.ToArray());
 
             foreach (var item in result)
             {
                 var dataRow = table.AddRow();
                 dataRow.Format.Alignment = ParagraphAlignment.Center;
 
-                // Add data for each column
                 dataRow.Cells[0].AddParagraph(item.NumberTicket);
                 dataRow.Cells[1].AddParagraph(CorrectedText(item.ServiceName));
                 dataRow.Cells[2].AddParagraph(CorrectedText(item.UserName));
@@ -414,9 +446,20 @@ public class ExportService : IExportService
                 dataRow.Cells[5].AddParagraph(item.ClientFinishTime?.ToString() ?? "-");
                 dataRow.Cells[6].AddParagraph(item.ClientWaitPeriod?.ToString() ?? "0");
                 dataRow.Cells[7].AddParagraph(item.UserWorkPeriod?.ToString() ?? "0");
-                dataRow.Cells[8].AddParagraph(item.ReviewName ?? "");
-                dataRow.Cells[9].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
-                dataRow.Cells[10].AddParagraph(item.Result ?? "");
+                
+                if (isNewNotWorkField)
+                {
+                    dataRow.Cells[8].AddParagraph(item.UserNotWork?.ToString() ?? "0");
+                    dataRow.Cells[8].AddParagraph(item.ReviewName ?? "");
+                    dataRow.Cells[9].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
+                    dataRow.Cells[10].AddParagraph(CorrectedText(item.Result ?? ""));
+                }
+                else
+                {
+                    dataRow.Cells[8].AddParagraph(item.ReviewName ?? "");
+                    dataRow.Cells[9].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
+                    dataRow.Cells[10].AddParagraph(CorrectedText(item.Result ?? ""));
+                }
             }
         }
 
@@ -486,7 +529,15 @@ public class ExportService : IExportService
             query = " AND cl.stand_time <= @To";
 
         if (!string.IsNullOrEmpty(filter.ServiceId))
-            query += " AND u.id = @ServiceId";
+        {
+            if (filter.ServiceId.Contains("[parent]"))
+            {
+                var parentId = filter.ServiceId.Replace("[parent]", "");
+                query += $" AND u.prent_id = {parentId}";
+            }
+            else
+                query += " AND u.id = @ServiceId";
+        }
 
         if (!string.IsNullOrEmpty(filter.UserId))
             query += " AND u.id = @UserId";
@@ -504,27 +555,33 @@ public class ExportService : IExportService
         var query = string.Empty;
 
         if (filter.From.HasValue && filter.To.HasValue)
+        {
+            var monthsDifference = Math.Abs((filter.From.Value.Year - filter.To.Value.Year) * 12 + filter.From.Value.Month - filter.To.Value.Month);
+
+            if (monthsDifference >= 3)
+                throw new Exception("Промежуток даты от и до не может быть больше 3 месяцев!");
+            
             query = " WHERE cl.stand_time BETWEEN @From AND @To";
+        }
         else if (filter.From.HasValue && string.IsNullOrEmpty(query))
             query = " WHERE cl.stand_time >= @From";
         else if (filter.To.HasValue && string.IsNullOrEmpty(query))
             query = " WHERE cl.stand_time <= @To";
 
-        if (!string.IsNullOrEmpty(filter.ServiceId) && !string.IsNullOrEmpty(filter.UserId))
+        if (!string.IsNullOrEmpty(filter.ServiceId))
         {
-            if (!string.IsNullOrEmpty(query))
-                query += " AND ser.id = @ServiceId AND us.id = @UserId";
+            var startQuery = string.IsNullOrEmpty(query) ? " WHERE " : " AND ";
+
+            if (filter.ServiceId.Contains("[parent]"))
+            {
+                var parentId = filter.ServiceId.Replace("[parent]", "");
+                query += startQuery + $"ser.prent_id = {parentId}";
+            }
             else
-                query = " WHERE ser.id = @ServiceId AND us.id = @UserId";
+                query += startQuery + "ser.id = @ServiceId";
         }
-        else if (!string.IsNullOrEmpty(filter.ServiceId))
-        {
-            if (!string.IsNullOrEmpty(query))
-                query += " AND ser.id = @ServiceId";
-            else
-                query = " WHERE ser.id = @ServiceId";
-        }
-        else if (!string.IsNullOrEmpty(filter.UserId))
+
+        if (!string.IsNullOrEmpty(filter.UserId))
         {
             if (!string.IsNullOrEmpty(query))
                 query += " AND us.id = @UserId";
