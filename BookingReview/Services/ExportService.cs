@@ -13,10 +13,12 @@ namespace BookingReview.Services;
 public class ExportService : IExportService
 {
     private readonly IDbConnection _db;
+    private readonly IConfiguration _cfg;
 
-    public ExportService(IDbConnection db)
+    public ExportService(IDbConnection db, IConfiguration cfg)
     {
         _db = db;
+        _cfg = cfg;
     }
 
     public async Task<IEnumerable<dynamic>> GetServicesAsync()
@@ -43,7 +45,11 @@ public class ExportService : IExportService
             ? "ABS(TIMESTAMPDIFF(MINUTE, LAG(cl.finish_time) OVER (ORDER BY cl.stand_time), cl.start_time)) AS 'UserNotWork',"
             : string.Empty;
 
-        var query = @$"SELECT DISTINCT(CONCAT(cl.service_prefix, cl.number)) as 'NumberTicket',
+        var showInputData = _cfg.GetValue<bool>("ShowInputData")
+            ? "cl.input_data as 'InputData',"
+            : string.Empty;
+
+        var query = @$"SELECT DISTINCT(CONCAT(cl.service_prefix, cl.number)) as 'NumberTicket',                            
                             ser.name as 'ServiceName',
                             us.name as 'UserName',
                             cl.stand_time as 'ClientStandTime',
@@ -52,6 +58,7 @@ public class ExportService : IExportService
                             TIMESTAMPDIFF(MINUTE, cl.stand_time, cl.start_time) as 'ClientWaitPeriod',
                             TIMESTAMPDIFF(MINUTE, cl.start_time, cl.finish_time) as 'UserWorkPeriod',
                             {notUserWorkField}
+                            {showInputData}
                             respo.name as 'ReviewName',
                             resp.comment as 'ReviewComment',
                             res.name as 'Result'
@@ -215,28 +222,31 @@ public class ExportService : IExportService
             result = await GetCommonReportDataAsync(filter);
 
             var isNewNotWorkField = !string.IsNullOrEmpty(filter.UserId);
-
-            headerRow.CreateCell(0).SetCellValue("Номер талона");
-            headerRow.CreateCell(1).SetCellValue("Услуга");
-            headerRow.CreateCell(2).SetCellValue("Работник");
-            headerRow.CreateCell(3).SetCellValue("Дата принятие клиента");
-            headerRow.CreateCell(4).SetCellValue("Дата начало обслуживания");
-            headerRow.CreateCell(5).SetCellValue("Дата конца обслуживания");
-            headerRow.CreateCell(6).SetCellValue("Время ожидания клиента (Мин)");
-            headerRow.CreateCell(7).SetCellValue("Время обслуживания клиента (Мин)");
-
+            var showInputData = _cfg.GetValue<bool>("ShowInputData");
+            
+            var columnNames = new List<string>
+            {
+                "Номер талона",
+                "Услуга",
+                "Работник",
+                "Дата принятие клиента",
+                "Дата начало обслуживания",
+                "Дата конца обслуживания",
+                "Время ожидания клиента (Мин)",
+                "Время обслуживания клиента (Мин)"
+            };
+            
             if (isNewNotWorkField)
+                columnNames.Add("Время бездействия работника (Мин)");
+            
+            if(showInputData)
+                columnNames.Add("Доп. Инфо");
+            
+            columnNames.AddRange(new [] { "Отзыв", "Комментарий к отзыву", "Результат" });
+
+            for (var i = 0; i < columnNames.Count; i++)
             {
-                headerRow.CreateCell(8).SetCellValue("Время бездействия работника (Мин)");
-                headerRow.CreateCell(9).SetCellValue("Отзыв");
-                headerRow.CreateCell(10).SetCellValue("Комментарий к отзыву");
-                headerRow.CreateCell(11).SetCellValue("Результат");
-            }
-            else
-            {
-                headerRow.CreateCell(8).SetCellValue("Отзыв");
-                headerRow.CreateCell(9).SetCellValue("Комментарий к отзыву");
-                headerRow.CreateCell(10).SetCellValue("Результат");
+                headerRow.CreateCell(i).SetCellValue(columnNames[i]);
             }
 
             foreach (var item in result)
@@ -252,9 +262,24 @@ public class ExportService : IExportService
                 dataRow.CreateCell(6).SetCellValue(item.ClientWaitPeriod?.ToString() ?? "0");
                 dataRow.CreateCell(7).SetCellValue(item.UserWorkPeriod?.ToString() ?? "0");
 
-                if (isNewNotWorkField)
+                if (isNewNotWorkField && showInputData)
                 {
                     dataRow.CreateCell(8).SetCellValue(item.UserNotWork?.ToString() ?? "0");
+                    dataRow.CreateCell(9).SetCellValue(item.InputData ?? "");
+                    dataRow.CreateCell(10).SetCellValue(item.ReviewName ?? "");
+                    dataRow.CreateCell(11).SetCellValue(item.ReviewComment ?? "");
+                    dataRow.CreateCell(12).SetCellValue(item.Result ?? "");
+                }
+                else if (isNewNotWorkField)
+                {
+                    dataRow.CreateCell(8).SetCellValue(item.UserNotWork?.ToString() ?? "0");
+                    dataRow.CreateCell(9).SetCellValue(item.ReviewName ?? "");
+                    dataRow.CreateCell(10).SetCellValue(item.ReviewComment ?? "");
+                    dataRow.CreateCell(11).SetCellValue(item.Result ?? "");
+                }
+                else if (showInputData)
+                {
+                    dataRow.CreateCell(8).SetCellValue(item.InputData ?? "");
                     dataRow.CreateCell(9).SetCellValue(item.ReviewName ?? "");
                     dataRow.CreateCell(10).SetCellValue(item.ReviewComment ?? "");
                     dataRow.CreateCell(11).SetCellValue(item.Result ?? "");
@@ -396,22 +421,8 @@ public class ExportService : IExportService
             result = await GetCommonReportDataAsync(filter);
 
             var isNewNotWorkField = !string.IsNullOrEmpty(filter.UserId);
-            var autoSizeHeaderLength = isNewNotWorkField ? 12 : 11;
-
-            for (int i = 0; i < autoSizeHeaderLength; i++)
-            {
-                var column = table.AddColumn(Unit.FromCentimeter(isNewNotWorkField ? 1.70 : 1.85));
-                column.Format.Alignment = ParagraphAlignment.Center;
-                column.Format.Font.Size = 7;
-            }
-
-            var headerRow = table.AddRow();
-            headerRow.HeadingFormat = true;
-            headerRow.Format.Alignment = ParagraphAlignment.Center;
-            headerRow.Format.Font.Size = 7;
-            headerRow.Format.Font.Bold = true;
-            headerRow.Shading.Color = Colors.LightGray;
-
+            var showInputData = _cfg.GetValue<bool>("ShowInputData");
+            
             var headerTitles = new List<string>
             {
                 "Номер талона",
@@ -425,12 +436,28 @@ public class ExportService : IExportService
             };
 
             if (isNewNotWorkField)
-            {
                 headerTitles.Add("Время бездействия работника (Мин)");
-            }
+            
+            if(showInputData)
+                headerTitles.Add("Доп. Инфо");
 
             headerTitles.AddRange(new[] { "Отзыв", "Комментарий к отзыву", "Результат" });
+            
+            // Auto-size
+            for (int i = 0; i < headerTitles.Count; i++)
+            {
+                var column = table.AddColumn(Unit.FromCentimeter(isNewNotWorkField || showInputData ? 1.70 : 1.85));
+                column.Format.Alignment = ParagraphAlignment.Center;
+                column.Format.Font.Size = 7;
+            }
 
+            var headerRow = table.AddRow();
+            headerRow.HeadingFormat = true;
+            headerRow.Format.Alignment = ParagraphAlignment.Center;
+            headerRow.Format.Font.Size = 7;
+            headerRow.Format.Font.Bold = true;
+            headerRow.Shading.Color = Colors.LightGray;
+            
             GenerateHeaderRowPdf(headerRow, headerTitles.ToArray());
 
             foreach (var item in result)
@@ -447,12 +474,27 @@ public class ExportService : IExportService
                 dataRow.Cells[6].AddParagraph(item.ClientWaitPeriod?.ToString() ?? "0");
                 dataRow.Cells[7].AddParagraph(item.UserWorkPeriod?.ToString() ?? "0");
                 
-                if (isNewNotWorkField)
+                if (isNewNotWorkField && showInputData)
                 {
                     dataRow.Cells[8].AddParagraph(item.UserNotWork?.ToString() ?? "0");
-                    dataRow.Cells[8].AddParagraph(item.ReviewName ?? "");
-                    dataRow.Cells[9].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
-                    dataRow.Cells[10].AddParagraph(CorrectedText(item.Result ?? ""));
+                    dataRow.Cells[9].AddParagraph(item.InputData ?? "");
+                    dataRow.Cells[10].AddParagraph(item.ReviewName ?? "");
+                    dataRow.Cells[11].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
+                    dataRow.Cells[12].AddParagraph(CorrectedText(item.Result ?? ""));
+                }
+                else if (isNewNotWorkField)
+                {
+                    dataRow.Cells[8].AddParagraph(item.UserNotWork?.ToString() ?? "0");
+                    dataRow.Cells[9].AddParagraph(item.ReviewName ?? "");
+                    dataRow.Cells[10].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
+                    dataRow.Cells[11].AddParagraph(CorrectedText(item.Result ?? ""));
+                }
+                else if (showInputData)
+                {
+                    dataRow.Cells[8].AddParagraph(item.InputData ?? "");
+                    dataRow.Cells[9].AddParagraph(item.ReviewName ?? "");
+                    dataRow.Cells[10].AddParagraph(CorrectedText(item.ReviewComment ?? ""));
+                    dataRow.Cells[11].AddParagraph(CorrectedText(item.Result ?? ""));
                 }
                 else
                 {

@@ -9,10 +9,12 @@ namespace BookingReview.Controllers;
 public class ExportController : Controller
 {
     private readonly IExportService _exportService;
+    private readonly IConfiguration _cfg;
 
-    public ExportController(IExportService exportService)
+    public ExportController(IExportService exportService, IConfiguration cfg)
     {
         _exportService = exportService;
+        _cfg = cfg;
     }
     
     public async Task<IActionResult> Generate(ExportType type, FilterModel filter)
@@ -72,6 +74,8 @@ public class ExportController : Controller
         {
             result = await _exportService.GetCommonReportDataAsync(filter);
             
+            
+            
             headers = new List<string>
             {
                 "Номер талона",
@@ -86,6 +90,9 @@ public class ExportController : Controller
             
             if(!string.IsNullOrEmpty(filter.UserId))
                 headers.Add("Время бездействия работника (Мин)");
+
+            if (_cfg.GetValue<bool>("ShowInputData"))
+                headers.Add("Доп. Инфо");
             
             headers.AddRange(new []
             {
